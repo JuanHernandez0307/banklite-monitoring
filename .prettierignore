@@ -1,0 +1,6 @@
+node_modules/
+package-lock.json
+# Archivos generados por scripts/generar.mjs: no se formatean a mano
+prometheus/prometheus.yml
+prometheus/prometheus.local.yml
+grafana/dashboards/

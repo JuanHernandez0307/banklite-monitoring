@@ -1,0 +1,69 @@
+# Generado por scripts/generar.mjs: no se edita a mano (npm run generar).
+global:
+    scrape_interval: 30s
+    scrape_timeout: 10s
+    evaluation_interval: 30s
+
+scrape_configs:
+    - job_name: banklite
+      static_configs:
+            - targets: ["demo-metricas:9200"]
+              labels:
+                  service: api-gateway
+                  __metrics_path__: /api-gateway/metrics
+            - targets: ["demo-metricas:9200"]
+              labels:
+                  service: auth-service
+                  __metrics_path__: /auth-service/metrics
+            - targets: ["demo-metricas:9200"]
+              labels:
+                  service: account-service
+                  __metrics_path__: /account-service/metrics
+            - targets: ["demo-metricas:9200"]
+              labels:
+                  service: kyc-service
+                  __metrics_path__: /kyc-service/metrics
+            - targets: ["demo-metricas:9200"]
+              labels:
+                  service: notification-service
+                  __metrics_path__: /notification-service/metrics
+            - targets: ["demo-metricas:9200"]
+              labels:
+                  service: ledger-service
+                  __metrics_path__: /ledger-service/metrics
+            - targets: ["demo-metricas:9200"]
+              labels:
+                  service: card-service
+                  __metrics_path__: /card-service/metrics
+            - targets: ["demo-metricas:9200"]
+              labels:
+                  service: transfer-service
+                  __metrics_path__: /transfer-service/metrics
+            - targets: ["demo-metricas:9200"]
+              labels:
+                  service: fraud-service
+                  __metrics_path__: /fraud-service/metrics
+            - targets: ["demo-metricas:9200"]
+              labels:
+                  service: compliance-service
+                  __metrics_path__: /compliance-service/metrics
+            - targets: ["demo-metricas:9200"]
+              labels:
+                  service: payment-service
+                  __metrics_path__: /payment-service/metrics
+            - targets: ["demo-metricas:9200"]
+              labels:
+                  service: rewards-service
+                  __metrics_path__: /rewards-service/metrics
+            - targets: ["demo-metricas:9200"]
+              labels:
+                  service: savings-service
+                  __metrics_path__: /savings-service/metrics
+            - targets: ["demo-metricas:9200"]
+              labels:
+                  service: deposit-service
+                  __metrics_path__: /deposit-service/metrics
+
+    - job_name: prometheus
+      static_configs:
+          - targets: ["localhost:9090"]

@@ -1,0 +1,13 @@
+{
+    "$schema": "https://railway.com/railway.schema.json",
+    "build": {
+        "builder": "DOCKERFILE",
+        "dockerfilePath": "prometheus/Dockerfile"
+    },
+    "deploy": {
+        "healthcheckPath": "/-/healthy",
+        "healthcheckTimeout": 120,
+        "restartPolicyType": "ON_FAILURE",
+        "restartPolicyMaxRetries": 5
+    }
+}

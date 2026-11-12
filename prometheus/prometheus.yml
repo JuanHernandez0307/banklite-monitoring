@@ -1,0 +1,57 @@
+# Generado por scripts/generar.mjs: no se edita a mano (npm run generar).
+global:
+    scrape_interval: 30s
+    scrape_timeout: 10s
+    evaluation_interval: 30s
+
+scrape_configs:
+    - job_name: banklite
+      metrics_path: /metrics
+      static_configs:
+            - targets: ["api-gateway.railway.internal:9100"]
+              labels:
+                  service: api-gateway
+            - targets: ["auth-service.railway.internal:9100"]
+              labels:
+                  service: auth-service
+            - targets: ["account-service.railway.internal:9100"]
+              labels:
+                  service: account-service
+            - targets: ["kyc-service.railway.internal:9100"]
+              labels:
+                  service: kyc-service
+            - targets: ["notification-service.railway.internal:9100"]
+              labels:
+                  service: notification-service
+            - targets: ["ledger-service.railway.internal:9100"]
+              labels:
+                  service: ledger-service
+            - targets: ["card-service.railway.internal:9100"]
+              labels:
+                  service: card-service
+            - targets: ["transfer-service.railway.internal:9100"]
+              labels:
+                  service: transfer-service
+            - targets: ["fraud-service.railway.internal:9100"]
+              labels:
+                  service: fraud-service
+            - targets: ["compliance-service.railway.internal:9100"]
+              labels:
+                  service: compliance-service
+            - targets: ["payment-service.railway.internal:9100"]
+              labels:
+                  service: payment-service
+            - targets: ["rewards-service.railway.internal:9100"]
+              labels:
+                  service: rewards-service
+            - targets: ["savings-service.railway.internal:9100"]
+              labels:
+                  service: savings-service
+            - targets: ["deposit-service.railway.internal:9100"]
+              labels:
+                  service: deposit-service
+
+    # Prometheus se vigila a sí mismo (no cuenta como servicio de BankLite).
+    - job_name: prometheus
+      static_configs:
+          - targets: ["localhost:9090"]

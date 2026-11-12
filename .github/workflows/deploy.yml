@@ -1,0 +1,25 @@
+# Pipeline de banklite-monitoring: pruebas en cada pull request.
+#
+# Usa el workflow reutilizable de banklite-pipelines. Por ahora SOLO corre en pull requests:
+# no hay despliegue a Railway hasta que existan los servicios de Prometheus y Grafana (un
+# push a main no dispara nada). Este repositorio tiene dos servicios y el pipeline @v1
+# despliega uno por repositorio; cómo se publican se decide en el PR que active el despliegue.
+
+name: Pruebas
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  pipeline:
+    uses: Luisortiz2406/banklite-pipelines/.github/workflows/servicio.yml@v1
+    with:
+      servicio: prometheus
+      # Construye las dos imágenes y prueba la configuración, el arranque y el acceso a Grafana.
+      prueba-extra: sh scripts/probar-imagenes.sh
+    secrets: inherit

@@ -1,0 +1,22 @@
+{
+    "name": "banklite-monitoring",
+    "private": true,
+    "description": "Prometheus y Grafana de BankLite: configuración, dashboards como archivos e imágenes. Solo herramientas de calidad: no hay build.",
+    "type": "module",
+    "scripts": {
+        "generar": "node scripts/generar.mjs",
+        "lint": "eslint .",
+        "lint:fix": "eslint . --fix",
+        "format": "prettier --write \"**/*.{mjs,json,yml,yaml,md}\"",
+        "format:check": "prettier --check \"**/*.{mjs,json,yml,yaml,md}\"",
+        "test": "node --test scripts/*.test.mjs"
+    },
+    "devDependencies": {
+        "@eslint/js": "^10.0.1",
+        "eslint": "^10.13.0",
+        "eslint-config-prettier": "^10.1.8",
+        "globals": "^17.13.0",
+        "prettier": "^3.9.10",
+        "yaml": "^2.8.0"
+    }
+}
