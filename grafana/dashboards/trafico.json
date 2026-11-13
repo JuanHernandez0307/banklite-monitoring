@@ -177,7 +177,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (service) (rate(http_requests_total{service=~\"$servicio\",status=~\"5..\"}[5m])) / sum by (service) (rate(http_requests_total{service=~\"$servicio\"}[5m]))",
+          "expr": "sum by (service) (rate(http_requests_total{service=~\"$servicio\",status=~\"5..\"}[5m])) / sum by (service) (rate(http_requests_total{service=~\"$servicio\"}[5m])) or sum by (service) (rate(http_requests_total{service=~\"$servicio\"}[5m])) * 0",
           "legendFormat": "{{service}}"
         }
       ],
@@ -228,7 +228,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (service) (rate(http_requests_total{service=~\"$servicio\",status=~\"4..\"}[5m])) / sum by (service) (rate(http_requests_total{service=~\"$servicio\"}[5m]))",
+          "expr": "sum by (service) (rate(http_requests_total{service=~\"$servicio\",status=~\"4..\"}[5m])) / sum by (service) (rate(http_requests_total{service=~\"$servicio\"}[5m])) or sum by (service) (rate(http_requests_total{service=~\"$servicio\"}[5m])) * 0",
           "legendFormat": "{{service}}"
         }
       ],
