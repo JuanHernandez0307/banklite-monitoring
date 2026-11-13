@@ -4,7 +4,7 @@
 // Rutas: /<servicio>/metrics (una por servicio). Puerto: PUERTO_DEMO (9200).
 import { createServer } from "node:http";
 import { pathToFileURL } from "node:url";
-import { PUERTO_DEMO, SERVICIOS } from "../scripts/servicios.mjs";
+import { MOTIVOS_RECHAZO_TRANSFERENCIA, PUERTO_DEMO, SERVICIOS } from "../scripts/servicios.mjs";
 
 const BUCKETS = [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10];
 const RUTAS = {
@@ -77,23 +77,34 @@ export function textoMetricas(servicio, ahora = Date.now() / 1000) {
         }
     }
 
+    // Series de negocio con las mismas etiquetas y valores cerrados que los servicios reales.
+    // [serie, eventos por segundo]
     const negocio = {
         "transfer-service": [
-            ['transfers_total{result="completed"}', 0.5],
-            ['transfers_total{result="rejected"}', 0.08],
+            ['transfers_total{result="completed",reason="none"}', 0.5],
+            ...MOTIVOS_RECHAZO_TRANSFERENCIA.map((motivo, i) => [
+                `transfers_total{result="rejected",reason="${motivo}"}`,
+                i === 10 ? 0.04 : i === 9 ? 0.02 : i === 11 ? 0.01 : 0.002,
+            ]),
         ],
         "fraud-service": [
             ['fraud_alerts_total{level="medium",decision="review"}', 0.05],
-            ['fraud_alerts_total{level="high",decision="block"}', 0.015],
+            ['fraud_alerts_total{level="high",decision="review"}', 0.015],
+            ['fraud_alerts_total{level="medium",decision="confirmed"}', 0.01],
+            ['fraud_alerts_total{level="high",decision="confirmed"}', 0.008],
+            ['fraud_alerts_total{level="medium",decision="dismissed"}', 0.02],
+            ['fraud_alerts_total{level="high",decision="dismissed"}', 0.003],
         ],
         "deposit-service": [
             ['payment_gateway_payments_total{result="approved"}', 0.25],
             ['payment_gateway_payments_total{result="declined"}', 0.04],
+            ['payment_gateway_payments_total{result="voided"}', 0.005],
             ['payment_gateway_payments_total{result="error"}', 0.01],
         ],
         "account-service": [
             ['account_closures_total{result="completed"}', 0.01],
             ['account_closures_total{result="requirements"}', 0.02],
+            ['account_closures_total{result="error"}', 0.002],
         ],
     }[servicio];
     for (const [serie, tasa] of negocio ?? []) incrementar(e.negocio, serie, Math.round(tasa * dt * (0.5 + e.azar())));

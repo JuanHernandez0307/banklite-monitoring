@@ -1,7 +1,7 @@
 {
   "uid": "banklite-negocio",
   "title": "Métricas de negocio",
-  "description": "Transferencias, alertas de fraude, pagos con la pasarela y cierres de cuenta.",
+  "description": "Transferencias (con el motivo de los rechazos), alertas de fraude, pagos con la pasarela y cierres de cuenta.",
   "tags": [
     "banklite",
     "negocio"
@@ -85,7 +85,7 @@
       "id": 2,
       "type": "stat",
       "title": "Transferencias rechazadas",
-      "description": "",
+      "description": "Rechazos de negocio (4xx). Los fallos de infraestructura no cuentan.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -141,8 +141,8 @@
     {
       "id": 3,
       "type": "stat",
-      "title": "Alertas de fraude",
-      "description": "",
+      "title": "Alertas de fraude generadas",
+      "description": "Las que el motor de reglas marcó para revisión manual (decision = review).",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -160,7 +160,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(increase(fraud_alerts_total[$__range])) or vector(0)",
+          "expr": "sum(increase(fraud_alerts_total{decision=\"review\"}[$__range])) or vector(0)",
           "legendFormat": "",
           "instant": true
         }
@@ -255,8 +255,8 @@
     {
       "id": 5,
       "type": "stat",
-      "title": "Pagos rechazados",
-      "description": "",
+      "title": "Pagos no aprobados",
+      "description": "Rechazados, anulados o con error.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -420,8 +420,8 @@
     {
       "id": 8,
       "type": "timeseries",
-      "title": "Alertas de fraude por minuto",
-      "description": "Por nivel de riesgo y decisión.",
+      "title": "Rechazos de transferencias por motivo (por minuto)",
+      "description": "Cada color es un motivo de rechazo (lista cerrada; el glosario está abajo).",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -439,7 +439,198 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (level, decision) (rate(fraud_alerts_total[5m])) * 60",
+          "expr": "sum by (reason) (rate(transfers_total{result=\"rejected\"}[5m])) * 60",
+          "legendFormat": "{{reason}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 40,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 9,
+      "type": "bargauge",
+      "title": "Motivos de rechazo en el período",
+      "description": "Transferencias rechazadas en el rango de tiempo elegido, por motivo.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 13,
+        "w": 12,
+        "h": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (reason) (increase(transfers_total{result=\"rejected\"}[$__range])) > 0",
+          "legendFormat": "{{reason}}",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "—",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "orange",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "displayMode": "gradient",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      }
+    },
+    {
+      "id": 10,
+      "type": "text",
+      "title": "Glosario de motivos de rechazo",
+      "description": "Qué significa cada valor de la etiqueta reason.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 13,
+        "w": 12,
+        "h": 9
+      },
+      "targets": [],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "| Motivo | Qué significa |\n|---|---|\n| `invalid_destination` | Datos de destino inválidos: número de cuenta o celular, tipo de cuenta o nombre. |\n| `key_not_found` | La llave del destinatario no existe o no es válida. |\n| `not_owner` | La cuenta de origen no es del cliente. |\n| `account_not_found` | La cuenta de origen no existe. |\n| `account_inactive` | Una de las cuentas no está activa. |\n| `idempotency_conflict` | El identificador único de la solicitud ya se usó para otra distinta. |\n| `request_not_found` | La solicitud que se quiere confirmar no existe. |\n| `request_cancelled` | La solicitud fue cancelada. |\n| `already_processing` | La solicitud ya se está procesando. |\n| `dynamic_key_invalid` | Código dinámico incorrecto, vencido o bloqueado. |\n| `insufficient_funds` | Saldo insuficiente. |\n| `limit_exceeded` | Se superó el límite diario o mensual. |\n| `ledger_rejected` | Otra regla de negocio del libro contable. |\n"
+      }
+    },
+    {
+      "id": 11,
+      "type": "timeseries",
+      "title": "Alertas de fraude generadas por minuto",
+      "description": "Solo las generadas (decision = review), por nivel de riesgo: medium o high.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 22,
+        "w": 12,
+        "h": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (level) (rate(fraud_alerts_total{decision=\"review\"}[5m])) * 60",
+          "legendFormat": "{{level}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 12,
+      "type": "timeseries",
+      "title": "Alertas de fraude resueltas por el personal (por hora)",
+      "description": "Lo que decide soporte o cumplimiento: confirmed (fraude confirmado) o dismissed (descartada).",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 22,
+        "w": 12,
+        "h": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (level, decision) (rate(fraud_alerts_total{decision=~\"confirmed|dismissed\"}[15m])) * 3600",
           "legendFormat": "{{level}} · {{decision}}"
         }
       ],
@@ -469,7 +660,7 @@
       }
     },
     {
-      "id": 9,
+      "id": 13,
       "type": "timeseries",
       "title": "Pagos con la pasarela por minuto",
       "description": "Aprobados, rechazados, anulados y con error.",
@@ -479,7 +670,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 13,
+        "y": 31,
         "w": 12,
         "h": 9
       },
@@ -520,17 +711,17 @@
       }
     },
     {
-      "id": 10,
+      "id": 14,
       "type": "timeseries",
-      "title": "Cierres de cuenta por hora",
-      "description": "Completados, con requisitos pendientes y con error.",
+      "title": "Cancelaciones de cuenta por hora",
+      "description": "completed: se cerraron las cuentas · requirements: quedó algo pendiente · error: falló la cancelación.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
       "gridPos": {
         "x": 12,
-        "y": 13,
+        "y": 31,
         "w": 12,
         "h": 9
       },

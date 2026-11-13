@@ -269,7 +269,7 @@ function trafico() {
             ),
             serie(
                 "Errores 5xx (% de las peticiones)",
-                'sum by (service) (rate(http_requests_total{service=~"$servicio",status=~"5.."}[5m])) / sum by (service) (rate(http_requests_total{service=~"$servicio"}[5m]))',
+                'sum by (service) (rate(http_requests_total{service=~"$servicio",status=~"5.."}[5m])) / sum by (service) (rate(http_requests_total{service=~"$servicio"}[5m])) or sum by (service) (rate(http_requests_total{service=~"$servicio"}[5m])) * 0',
                 "{{service}}",
                 { x: 0, y: 9, w: 12, h: 9 },
                 "percentunit",
@@ -277,7 +277,7 @@ function trafico() {
             ),
             serie(
                 "Errores 4xx (% de las peticiones)",
-                'sum by (service) (rate(http_requests_total{service=~"$servicio",status=~"4.."}[5m])) / sum by (service) (rate(http_requests_total{service=~"$servicio"}[5m]))',
+                'sum by (service) (rate(http_requests_total{service=~"$servicio",status=~"4.."}[5m])) / sum by (service) (rate(http_requests_total{service=~"$servicio"}[5m])) or sum by (service) (rate(http_requests_total{service=~"$servicio"}[5m])) * 0',
                 "{{service}}",
                 { x: 12, y: 9, w: 12, h: 9 },
                 "percentunit",
@@ -381,13 +381,38 @@ function ajustarPercentiles(panelBase) {
 
 // ---------------------------------------------------------------- Negocio
 
+// Qué significa cada motivo de rechazo de una transferencia (lista cerrada de transfer-service).
+export const GLOSARIO_RECHAZOS = {
+    invalid_destination: "Datos de destino inválidos: número de cuenta o celular, tipo de cuenta o nombre.",
+    key_not_found: "La llave del destinatario no existe o no es válida.",
+    not_owner: "La cuenta de origen no es del cliente.",
+    account_not_found: "La cuenta de origen no existe.",
+    account_inactive: "Una de las cuentas no está activa.",
+    idempotency_conflict: "El identificador único de la solicitud ya se usó para otra distinta.",
+    request_not_found: "La solicitud que se quiere confirmar no existe.",
+    request_cancelled: "La solicitud fue cancelada.",
+    already_processing: "La solicitud ya se está procesando.",
+    dynamic_key_invalid: "Código dinámico incorrecto, vencido o bloqueado.",
+    insufficient_funds: "Saldo insuficiente.",
+    limit_exceeded: "Se superó el límite diario o mensual.",
+    ledger_rejected: "Otra regla de negocio del libro contable.",
+};
+
+function glosario() {
+    const filas = Object.entries(GLOSARIO_RECHAZOS)
+        .map(([motivo, texto]) => `| \`${motivo}\` | ${texto} |`)
+        .join("\n");
+    return `| Motivo | Qué significa |\n|---|---|\n${filas}\n`;
+}
+
 function negocio() {
     reiniciarIds();
     const periodo = "$__range";
     return tablero({
         uid: "banklite-negocio",
         titulo: "Métricas de negocio",
-        descripcion: "Transferencias, alertas de fraude, pagos con la pasarela y cierres de cuenta.",
+        descripcion:
+            "Transferencias (con el motivo de los rechazos), alertas de fraude, pagos con la pasarela y cierres de cuenta.",
         etiquetas: ["negocio"],
         paneles: [
             numero(
@@ -400,13 +425,19 @@ function negocio() {
                 "Transferencias rechazadas",
                 `sum(increase(transfers_total{result="rejected"}[${periodo}])) or vector(0)`,
                 { x: 4, y: 0, w: 4, h: 4 },
-                { umbrales: [{ color: "orange", value: null }] }
+                {
+                    umbrales: [{ color: "orange", value: null }],
+                    descripcion: "Rechazos de negocio (4xx). Los fallos de infraestructura no cuentan.",
+                }
             ),
             numero(
-                "Alertas de fraude",
-                `sum(increase(fraud_alerts_total[${periodo}])) or vector(0)`,
+                "Alertas de fraude generadas",
+                `sum(increase(fraud_alerts_total{decision="review"}[${periodo}])) or vector(0)`,
                 { x: 8, y: 0, w: 4, h: 4 },
-                { umbrales: [{ color: "orange", value: null }] }
+                {
+                    umbrales: [{ color: "orange", value: null }],
+                    descripcion: "Las que el motor de reglas marcó para revisión manual (decision = review).",
+                }
             ),
             numero(
                 "Pagos aprobados",
@@ -415,10 +446,10 @@ function negocio() {
                 { umbrales: [{ color: "green", value: null }], descripcion: "Pasarela de pagos en modo de pruebas." }
             ),
             numero(
-                "Pagos rechazados",
+                "Pagos no aprobados",
                 `sum(increase(payment_gateway_payments_total{result=~"declined|voided|error"}[${periodo}])) or vector(0)`,
                 { x: 16, y: 0, w: 4, h: 4 },
-                { umbrales: [{ color: "orange", value: null }] }
+                { umbrales: [{ color: "orange", value: null }], descripcion: "Rechazados, anulados o con error." }
             ),
             numero(
                 "Cuentas cerradas",
@@ -435,28 +466,83 @@ function negocio() {
                 "Completadas y rechazadas."
             ),
             serie(
-                "Alertas de fraude por minuto",
-                "sum by (level, decision) (rate(fraud_alerts_total[5m])) * 60",
-                "{{level}} · {{decision}}",
+                "Rechazos de transferencias por motivo (por minuto)",
+                'sum by (reason) (rate(transfers_total{result="rejected"}[5m])) * 60',
+                "{{reason}}",
                 { x: 12, y: 4, w: 12, h: 9 },
                 "short",
-                "Por nivel de riesgo y decisión."
+                "Cada color es un motivo de rechazo (lista cerrada; el glosario está abajo).",
+                { custom: { stacking: { mode: "normal", group: "A" }, fillOpacity: 40 } }
+            ),
+            panel({
+                tipo: "bargauge",
+                titulo: "Motivos de rechazo en el período",
+                descripcion: "Transferencias rechazadas en el rango de tiempo elegido, por motivo.",
+                x: 0,
+                y: 13,
+                w: 12,
+                h: 9,
+                unidad: "short",
+                objetivos: [
+                    objetivo(
+                        `sum by (reason) (increase(transfers_total{result="rejected"}[${periodo}])) > 0`,
+                        "{{reason}}",
+                        { instant: true }
+                    ),
+                ],
+                campos: {
+                    ...sinDatos,
+                    thresholds: { mode: "absolute", steps: [{ color: "orange", value: null }] },
+                    color: { mode: "thresholds" },
+                },
+                opciones: {
+                    displayMode: "gradient",
+                    orientation: "horizontal",
+                    reduceOptions: { calcs: ["lastNotNull"], fields: "", values: false },
+                },
+            }),
+            panel({
+                tipo: "text",
+                titulo: "Glosario de motivos de rechazo",
+                descripcion: "Qué significa cada valor de la etiqueta reason.",
+                x: 12,
+                y: 13,
+                w: 12,
+                h: 9,
+                objetivos: [],
+                opciones: { mode: "markdown", content: glosario() },
+            }),
+            serie(
+                "Alertas de fraude generadas por minuto",
+                'sum by (level) (rate(fraud_alerts_total{decision="review"}[5m])) * 60',
+                "{{level}}",
+                { x: 0, y: 22, w: 12, h: 9 },
+                "short",
+                "Solo las generadas (decision = review), por nivel de riesgo: medium o high."
+            ),
+            serie(
+                "Alertas de fraude resueltas por el personal (por hora)",
+                'sum by (level, decision) (rate(fraud_alerts_total{decision=~"confirmed|dismissed"}[15m])) * 3600',
+                "{{level}} · {{decision}}",
+                { x: 12, y: 22, w: 12, h: 9 },
+                "short",
+                "Lo que decide soporte o cumplimiento: confirmed (fraude confirmado) o dismissed (descartada)."
             ),
             serie(
                 "Pagos con la pasarela por minuto",
                 "sum by (result) (rate(payment_gateway_payments_total[5m])) * 60",
                 "{{result}}",
-                { x: 0, y: 13, w: 12, h: 9 },
+                { x: 0, y: 31, w: 12, h: 9 },
                 "short",
                 "Aprobados, rechazados, anulados y con error."
             ),
             serie(
-                "Cierres de cuenta por hora",
+                "Cancelaciones de cuenta por hora",
                 "sum by (result) (rate(account_closures_total[15m])) * 3600",
                 "{{result}}",
-                { x: 12, y: 13, w: 12, h: 9 },
+                { x: 12, y: 31, w: 12, h: 9 },
                 "short",
-                "Completados, con requisitos pendientes y con error."
+                "completed: se cerraron las cuentas · requirements: quedó algo pendiente · error: falló la cancelación."
             ),
         ],
     });

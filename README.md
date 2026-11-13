@@ -8,17 +8,17 @@ servicios (14)  ──/metrics, puerto 9100, red privada──►  Prometheus  �
 
 ## Qué hay aquí
 
-| Ruta                                                  | Qué es                                                                                                      |
-| ----------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| `prometheus/prometheus.yml`                           | Configuración para Railway: los 14 servicios por `<servicio>.railway.internal:9100`, cada 30 s. Generado.   |
-| `prometheus/prometheus.local.yml`                     | La misma, apuntando al exportador de demostración (docker-compose). Generado.                               |
-| `prometheus/Dockerfile`, `railway.json`               | Imagen de Prometheus: guarda 7 días o 2 GB, datos en `/prometheus` (volumen).                               |
-| `grafana/Dockerfile`, `entrypoint.sh`, `railway.json` | Imagen de Grafana: sin acceso anónimo ni registro público; **no arranca sin usuario y contraseña propios**. |
-| `grafana/provisioning/`                               | Datasource y proveedor de dashboards como archivos.                                                         |
-| `grafana/dashboards/`                                 | Los cuatro dashboards (JSON generado): salud, tráfico y errores, latencia p95, negocio.                     |
-| `scripts/`                                            | Generador, pruebas (`node --test`) y `probar-imagenes.sh` (la corre el pipeline).                           |
-| `demo/exportador.mjs`                                 | Métricas **ficticias** con los mismos nombres que las reales, para ver los dashboards sin Railway.          |
-| `docker-compose.yml`                                  | Respaldo local: Prometheus + Grafana + exportador de demostración.                                          |
+| Ruta                                                  | Qué es                                                                                                                                                                             |
+| ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `prometheus/prometheus.yml`                           | Configuración para Railway: los 14 servicios por `<servicio>.railway.internal:9100`, cada 30 s. Generado.                                                                          |
+| `prometheus/prometheus.local.yml`                     | La misma, apuntando al exportador de demostración (docker-compose). Generado.                                                                                                      |
+| `prometheus/Dockerfile`, `railway.json`               | Imagen de Prometheus: guarda 7 días o 2 GB, datos en `/prometheus` (volumen).                                                                                                      |
+| `grafana/Dockerfile`, `entrypoint.sh`, `railway.json` | Imagen de Grafana: sin acceso anónimo ni registro público; **no arranca sin usuario y contraseña propios**.                                                                        |
+| `grafana/provisioning/`                               | Datasource y proveedor de dashboards como archivos.                                                                                                                                |
+| `grafana/dashboards/`                                 | Los cuatro dashboards (JSON generado): salud, tráfico y errores, latencia p95, negocio (transferencias con sus rechazos por motivo, alertas de fraude, pagos y cierres de cuenta). |
+| `scripts/`                                            | Generador, pruebas (`node --test`) y `probar-imagenes.sh` (la corre el pipeline).                                                                                                  |
+| `demo/exportador.mjs`                                 | Métricas **ficticias** con los mismos nombres que las reales, para ver los dashboards sin Railway.                                                                                 |
+| `docker-compose.yml`                                  | Respaldo local: Prometheus + Grafana + exportador de demostración.                                                                                                                 |
 
 Los archivos «Generado» salen de `scripts/` (`npm run generar`); una prueba comprueba que lo versionado coincide con el generador. Para cambiar un dashboard o la lista de servicios se edita el generador, no el JSON.
 
@@ -26,15 +26,25 @@ Los archivos «Generado» salen de `scripts/` (`npm run generar`); una prueba co
 
 Cada servicio publica `/metrics` en el puerto `9100` (solo red privada). Prometheus agrega la etiqueta `service`.
 
-| Métrica                                            | Etiquetas                                           |
-| -------------------------------------------------- | --------------------------------------------------- |
-| `http_requests_total`                              | `route` (plantilla, sin ids), `method`, `status`    |
-| `http_request_duration_seconds` (histograma)       | `route`, `method`                                   |
-| `process_*` y `nodejs_*` (prom-client)             | —                                                   |
-| `transfers_total` (transfer-service)               | `result`: `completed`, `rejected`                   |
-| `fraud_alerts_total` (fraud-service)               | `level`, `decision`                                 |
-| `payment_gateway_payments_total` (deposit-service) | `result`: `approved`, `declined`, `voided`, `error` |
-| `account_closures_total` (account-service)         | `result`: `completed`, `requirements`, `error`      |
+| Métrica                                            | Etiquetas                                                                            |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| `http_requests_total`                              | `route` (plantilla, sin ids), `method`, `status`                                     |
+| `http_request_duration_seconds` (histograma)       | `route`, `method`                                                                    |
+| `process_*` y `nodejs_*` (prom-client)             | —                                                                                    |
+| `transfers_total` (transfer-service)               | `result`: `completed`, `rejected`; `reason`: `none` o uno de 13 motivos de rechazo   |
+| `fraud_alerts_total` (fraud-service)               | `level`: `medium`, `high`; `decision`: `review` (generada), `confirmed`, `dismissed` |
+| `payment_gateway_payments_total` (deposit-service) | `result`: `approved`, `declined`, `voided`, `error`                                  |
+| `account_closures_total` (account-service)         | `result`: `completed`, `requirements`, `error`                                       |
+
+Detalles que importan al leer los paneles:
+
+- **Rechazos de transferencias:** `reason` solo tiene valor distinto de `none` cuando `result="rejected"`; los 13
+  motivos están explicados en el glosario del dashboard de negocio. No cuentan los fallos de infraestructura (5xx).
+- **Alertas de fraude:** cada alerta cuenta una vez como `review` al generarse y otra como `confirmed` o `dismissed`
+  cuando el personal la resuelve. «Alertas generadas» = `decision="review"`; sumar sin filtrar mezclaría el ciclo
+  completo, por eso todas las consultas de fraude filtran por `decision`.
+- **Pagos:** `approved` = la pasarela aprobó y se abonó; sin nombres de proveedores en métricas ni etiquetas.
+- **Cierres de cuenta:** `completed` cuenta una vez por cliente; `requirements` = quedó algo pendiente.
 
 Las etiquetas son de lista cerrada: nunca llevan correos, documentos, IPs, ids de usuario ni de cuenta. `scripts/dashboards.test.mjs` lo comprueba en los dashboards.
 
