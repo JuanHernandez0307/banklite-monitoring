@@ -5,11 +5,19 @@
 # - Grafana con credenciales: sin sesión todo da 401 (sin acceso anónimo), con sesión se ven
 #   el datasource y los cuatro dashboards, y el registro público está apagado.
 # La contraseña de la prueba se genera al azar en cada corrida (no hay ninguna en el repo).
-# La corre el pipeline (prueba-extra de banklite-pipelines); en local necesita Docker.
+# La corre el pipeline (prueba-extra del workflow); en local necesita Docker.
+# Uso: sh scripts/probar-imagenes.sh [prometheus|grafana]   (sin argumento prueba las dos)
 set -e
 
-docker build -f prometheus/Dockerfile -t banklite-prometheus .
-docker build -f grafana/Dockerfile -t banklite-grafana .
+objetivo=${1:-todo}
+case "$objetivo" in
+  todo | prometheus | grafana) ;;
+  *) echo "Uso: sh scripts/probar-imagenes.sh [prometheus|grafana]"; exit 2 ;;
+esac
+quiere() { [ "$objetivo" = todo ] || [ "$objetivo" = "$1" ]; }
+
+quiere prometheus && docker build -f prometheus/Dockerfile -t banklite-prometheus .
+quiere grafana && docker build -f grafana/Dockerfile -t banklite-grafana .
 
 limpiar() { docker rm -f prom-prueba graf-prueba graf-sin-clave graf-clave-debil > /dev/null 2>&1 || true; }
 limpiar
@@ -18,6 +26,7 @@ trap limpiar EXIT
 fallo() { echo "FALLÓ: $1"; exit 1; }
 
 # ---------------------------------------------------------------- Prometheus
+if quiere prometheus; then
 docker run --rm --entrypoint promtool banklite-prometheus check config /etc/prometheus/prometheus.yml \
   || fallo "promtool rechaza prometheus.yml"
 
@@ -28,8 +37,10 @@ for i in $(seq 1 30); do
 done
 [ "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:19090/-/healthy)" = 200 ] || fallo "Prometheus no quedó sano"
 echo "Prometheus: configuración válida y servicio sano"
+fi
 
 # ---------------------------------------------------------------- Grafana
+if quiere grafana; then
 # no_arranca <nombre> <texto esperado en el log> [opciones de docker run...]
 no_arranca() {
   nombre=$1; texto=$2; shift 2
@@ -84,3 +95,4 @@ case "$registro" in
   *) fallo "el registro público debería estar apagado y respondió $registro" ;;
 esac
 echo "Grafana: registro público apagado"
+fi

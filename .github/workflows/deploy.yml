@@ -1,9 +1,12 @@
 # Pipeline de banklite-monitoring: pruebas en cada pull request.
 #
-# Usa el workflow reutilizable de banklite-pipelines. Por ahora SOLO corre en pull requests:
-# no hay despliegue a Railway hasta que existan los servicios de Prometheus y Grafana (un
-# push a main no dispara nada). Este repositorio tiene dos servicios y el pipeline @v1
-# despliega uno por repositorio; cómo se publican se decide en el PR que active el despliegue.
+# Llama a la copia local del workflow compartido (./.github/workflows/servicio.yml): el repositorio
+# banklite-pipelines es privado y de otro dueño, y GitHub no deja llamarlo desde aquí.
+# Hay dos servicios en este repositorio, cada uno con su Dockerfile y su prueba de imagen.
+#
+# Por ahora SOLO corre en pull requests: no hay despliegue a Railway hasta que existan los
+# servicios de Prometheus y Grafana (un push a main no dispara nada). Al activarlo se agrega
+# `push: branches: [main]` y se define el secret RAILWAY_TOKEN en este repositorio.
 
 name: Pruebas
 
@@ -16,10 +19,22 @@ permissions:
   packages: write
 
 jobs:
-  pipeline:
-    uses: Luisortiz2406/banklite-pipelines/.github/workflows/servicio.yml@v1
+  prometheus:
+    uses: ./.github/workflows/servicio.yml
     with:
       servicio: prometheus
-      # Construye las dos imágenes y prueba la configuración, el arranque y el acceso a Grafana.
-      prueba-extra: sh scripts/probar-imagenes.sh
+      dockerfile: prometheus/Dockerfile
+      contexto: .
+      # Construye la imagen de Prometheus y prueba la configuración y el arranque.
+      prueba-extra: sh scripts/probar-imagenes.sh prometheus
+    secrets: inherit
+
+  grafana:
+    uses: ./.github/workflows/servicio.yml
+    with:
+      servicio: grafana
+      dockerfile: grafana/Dockerfile
+      contexto: .
+      # Construye la imagen de Grafana y prueba que no arranca sin credenciales y que exige sesión.
+      prueba-extra: sh scripts/probar-imagenes.sh grafana
     secrets: inherit
