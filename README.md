@@ -64,9 +64,13 @@ Los valores no van en el repositorio ni en el chat.
 npm ci
 npm test                         # configuración, dashboards, exportador
 npm run lint && npm run format:check
-sh scripts/probar-imagenes.sh    # necesita Docker; el pipeline la corre en cada PR
+sh scripts/probar-imagenes.sh    # necesita Docker (opcional: prometheus | grafana); el pipeline la corre en cada PR
 ```
 
 ## Despliegue
 
-Todavía no se despliega nada: el workflow solo corre pruebas en los pull requests. Los servicios de Prometheus y Grafana se crean en Railway aparte (Prometheus sin dominio público) y el despliegue con `banklite-pipelines@v1` se activa en un PR posterior.
+Todavía no se despliega nada: el workflow solo corre pruebas en los pull requests.
+
+- `.github/workflows/servicio.yml` es una **copia local** del pipeline compartido `banklite-pipelines` (etiqueta `v1.1`): ese repositorio es privado y de otro dueño, y GitHub no deja llamarlo desde este. `deploy.yml` la llama con `uses: ./.github/workflows/servicio.yml`, una vez por servicio (`prometheus` y `grafana`). La copia agrega las entradas opcionales `dockerfile` y `contexto` y nombra la imagen de GHCR con el servicio. Los cambios que se hagan al original hay que copiarlos aquí a mano.
+- Los servicios de Prometheus y Grafana se crean en Railway aparte (Prometheus sin dominio público). Cada uno usa su `railway.json` (`prometheus/railway.json`, `grafana/railway.json`) como archivo de configuración del servicio.
+- El despliegue se activa en un PR posterior, cuando existan los servicios y el secret `RAILWAY_TOKEN` de este repositorio.

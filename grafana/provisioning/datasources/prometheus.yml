@@ -1,0 +1,14 @@
+# Datasource como archivo: la dirección sale de la variable PROMETHEUS_URL
+# (en Railway, la red privada; en docker-compose, el contenedor de Prometheus).
+apiVersion: 1
+datasources:
+  - name: Prometheus
+    uid: prometheus
+    type: prometheus
+    access: proxy
+    url: $PROMETHEUS_URL
+    isDefault: true
+    editable: false
+    jsonData:
+      timeInterval: 30s
+      httpMethod: POST

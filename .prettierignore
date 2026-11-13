@@ -1,0 +1,8 @@
+node_modules/
+package-lock.json
+# Archivos generados por scripts/generar.mjs: no se formatean a mano
+prometheus/prometheus.yml
+prometheus/prometheus.local.yml
+grafana/dashboards/
+# Copia local del workflow compartido: se mantiene igual al original salvo los cambios documentados en su cabecera
+.github/workflows/servicio.yml

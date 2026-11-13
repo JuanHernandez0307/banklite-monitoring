@@ -1,0 +1,48 @@
+# Respaldo local: Prometheus + Grafana con datos de DEMOSTRACIÓN (ficticios) para ver los
+# dashboards sin Railway. Uso:
+#   cp .env.example .env     # y define GRAFANA_PASSWORD (12+ caracteres)
+#   docker compose up --build
+#   Grafana: http://localhost:3000   (usuario y contraseña: los de tu .env)
+# Para consultar los servicios reales no se usa este archivo: Prometheus corre en Railway.
+services:
+  demo-metricas:
+    image: node:20-alpine
+    working_dir: /app
+    command: ["node", "demo/exportador.mjs"]
+    volumes:
+      - ./demo:/app/demo:ro
+      - ./scripts:/app/scripts:ro
+    expose:
+      - "9200"
+
+  prometheus:
+    build:
+      context: .
+      dockerfile: prometheus/Dockerfile
+    volumes:
+      # Mismo Dockerfile que en Railway; solo cambia el archivo de configuración.
+      - ./prometheus/prometheus.local.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-datos:/prometheus
+    ports:
+      - "127.0.0.1:9090:9090"
+    depends_on:
+      - demo-metricas
+
+  grafana:
+    build:
+      context: .
+      dockerfile: grafana/Dockerfile
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-monitoreo}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:?Define GRAFANA_PASSWORD en .env (12+ caracteres)}
+      PROMETHEUS_URL: http://prometheus:9090
+    volumes:
+      - grafana-datos:/var/lib/grafana
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      - prometheus
+
+volumes:
+  prometheus-datos:
+  grafana-datos:
