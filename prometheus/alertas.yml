@@ -1,0 +1,37 @@
+# Reglas de alerta de Prometheus. Usan solo las métricas que ya exponen los servicios
+# (up, http_requests_total, http_request_duration_seconds). Prometheus las evalúa y
+# las muestra en Alerts; no hay Alertmanager, así que no envían avisos por sí solas.
+groups:
+  - name: banklite-servicios
+    rules:
+      - alert: ServicioCaido
+        expr: up{job="banklite"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.service }} está caído"
+          description: "Prometheus no puede leer las métricas de {{ $labels.service }} desde hace más de 2 minutos."
+
+      - alert: TasaErrores5xxAlta
+        expr: |
+          sum by (service) (rate(http_requests_total{status=~"5.."}[5m]))
+            / sum by (service) (rate(http_requests_total[5m])) > 0.05
+          and sum by (service) (rate(http_requests_total[5m])) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.service }} responde con muchos errores 5xx"
+          description: "Más del 5 % de las peticiones de {{ $labels.service }} terminan en 5xx en los últimos 5 minutos ({{ $value | humanizePercentage }})."
+
+      - alert: LatenciaP95Alta
+        expr: |
+          histogram_quantile(0.95, sum by (le, service) (rate(http_request_duration_seconds_bucket[5m]))) > 1
+          and sum by (service) (rate(http_requests_total[5m])) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.service }} tiene latencia alta"
+          description: "El p95 de {{ $labels.service }} supera 1 s en los últimos 5 minutos ({{ $value | humanizeDuration }})."

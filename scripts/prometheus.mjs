@@ -5,6 +5,9 @@ global:
     scrape_interval: 30s
     scrape_timeout: 10s
     evaluation_interval: 30s
+
+rule_files:
+    - /etc/prometheus/alertas.yml
 `;
 
 /** prometheus.yml de Railway: cada servicio por su dirección privada, puerto 9100. */
