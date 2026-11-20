@@ -79,8 +79,7 @@ sh scripts/probar-imagenes.sh    # necesita Docker (opcional: prometheus | grafa
 
 ## Despliegue
 
-Todavía no se despliega nada: el workflow solo corre pruebas en los pull requests.
+Prometheus y Grafana se usan **desplegados en Railway**; en local solo se corre el docker-compose de respaldo con datos de demostración.
 
 - `.github/workflows/servicio.yml` es una **copia local** del pipeline compartido `banklite-pipelines` (etiqueta `v1.1`): ese repositorio es privado y de otro dueño, y GitHub no deja llamarlo desde este. `deploy.yml` la llama con `uses: ./.github/workflows/servicio.yml`, una vez por servicio (`prometheus` y `grafana`). La copia agrega las entradas opcionales `dockerfile` y `contexto` y nombra la imagen de GHCR con el servicio. Los cambios que se hagan al original hay que copiarlos aquí a mano.
 - Los servicios de Prometheus y Grafana se crean en Railway aparte (Prometheus sin dominio público). Cada uno usa su `railway.json` (`prometheus/railway.json`, `grafana/railway.json`) como archivo de configuración del servicio.
-- El despliegue se activa en un PR posterior, cuando existan los servicios y el secret `RAILWAY_TOKEN` de este repositorio.
